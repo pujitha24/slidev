@@ -392,15 +392,20 @@ cli.command(
     const { build } = await import('./commands/build')
 
     for (const entryFile of entry as unknown as string[]) {
-      const options = await resolveOptions({ entry: entryFile, theme, inspect, download, base, withoutNotes, routerMode: routerMode as 'hash' | 'history' | 'memory' | undefined }, 'build')
+      const isMultiple = entry.length > 1
+      const deckName = path.basename(entryFile, '.md')
+      // Each deck is emitted to its own subdirectory, so an absolute base must include it too
+      const isRelativeBase = base === '' || base?.startsWith('.')
+      const deckBase = isMultiple && !isRelativeBase ? `${(base || '/').replace(/\/?$/, '/')}${deckName}/` : base
+      const options = await resolveOptions({ entry: entryFile, theme, inspect, download, base: deckBase, withoutNotes, routerMode: routerMode as 'hash' | 'history' | 'memory' | undefined }, 'build')
 
       printInfo(options)
       await build(
         options,
         {
-          base,
+          base: deckBase,
           build: {
-            outDir: entry.length === 1 ? out : path.join(out, path.basename(entryFile, '.md')),
+            outDir: isMultiple ? path.join(out, deckName) : out,
           },
         },
         { ...args, entry: entryFile },
